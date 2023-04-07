@@ -57,7 +57,7 @@ func installToolsLinux() error {
 unzip jadx-1.4.6.zip && \
 rm jadx-1.4.6.zip LICENSE NOTICE README.md && \
 chmod +x bin/jadx`
-	err := runCommand("bash", "-c", installJadx)
+	err := helper.runCommand("bash", "-c", installJadx)
 	if err != nil {
 		return fmt.Errorf("error installing jadx: %v", err)
 	}
@@ -70,7 +70,7 @@ func installToolsMac() error {
 	unzip jadx-1.4.6.zip && \
 	rm jadx-1.4.6.zip LICENSE NOTICE README.md && \
 	chmod +x bin/jadx`
-	err := runCommand("bash", "-c", installJadx, "-q")
+	err := helper.runCommand("bash", "-c", installJadx, "-q")
 	if err != nil {
 		return fmt.Errorf("error installing jadx: %v", err)
 	}
@@ -86,23 +86,10 @@ func installToolsWindows() error {
 
 // ------------ decompile ----------------
 func decompileAPK(jadxSource string, apkPath string, folder string) error {
-	jadxErr := runCommand(jadxSource, "-d", folder, apkPath, "-q")
+	jadxErr := helper.runCommand(jadxSource, "-d", folder, apkPath, "-q")
 	if jadxErr != nil {
 		return fmt.Errorf("error running jadx: %v", jadxErr)
 	}
-	return nil
-}
-
-func runCommand(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("error running command '%s': %v", name, err)
-	}
-
 	return nil
 }
 
