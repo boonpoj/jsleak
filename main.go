@@ -6,13 +6,16 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -64,7 +67,210 @@ func request(fullurl string, statusCode bool) string {
 }
 
 func regexGrep(content string, Burl string) {
-	regex_map := map[string]string{
+	regex_map := RegexMap()
+
+	for key, element := range regex_map {
+		r := regexp.MustCompile(element)
+		matches := r.FindAllString(content, -1)
+		for _, v := range matches {
+			fmt.Println("[+] Found " + "[" + key + "]" + "	[" + v + "]" + "	[" + Burl + "]")
+		}
+	}
+}
+
+func linkFinder(content, baseURL string, completeURL, statusCode bool) {
+	linkRegex := `(?:"|')(((?:[a-zA-Z]{1,10}://|//)[^"'/]{1,}\.[a-zA-Z]{2,}[^"']{0,})|((?:/|\.\./|\./)[^"'><,;| *()(%%$^/\\\[\]][^"'><,;|()]{1,})|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{1,}\.(?:[a-zA-Z]{1,4}|action)(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{3,}(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-]{1,}\.(?:php|asp|aspx|jsp|json|action|html|js|txt|xml)(?:[\?|#][^"|']{0,}|)))(?:"|')`
+
+	r := regexp.MustCompile(linkRegex)
+	matches := r.FindAllString(content, -1)
+
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		fmt.Println("")
+	}
+
+	for _, v := range matches {
+		cleanedMatch := strings.Trim(v, `"'`)
+		link, err := url.Parse(cleanedMatch)
+		if err != nil {
+			continue
+		}
+		if completeURL {
+			link = base.ResolveReference(link)
+		}
+		if statusCode {
+			request(link.String(), true)
+		} else {
+			fmt.Printf("[+] Found link: [%s] in [%s] \n", link.String(), base.String())
+		}
+	}
+}
+
+// ------------ checing installation tool ------------
+func checkToolsInstallation() (bool, string) {
+	jadxInstalled1 := checkCommandAvailability("jadx")
+	jadxInstalled2 := checkCommandAvailability("bin/jadx")
+	jadxSource := ""
+	if jadxInstalled1 {
+		jadxSource = "jadx"
+	}
+	if jadxInstalled2 {
+		jadxSource = "bin/jadx"
+	}
+	return jadxInstalled1 || jadxInstalled2, jadxSource
+}
+
+func checkCommandAvailability(command string) bool {
+	_, err := exec.LookPath(command)
+	return err == nil
+}
+
+func checkLocalFile(path string) bool {
+	if _, err := os.Stat("bin/jadx"); err == nil {
+		return true
+	}
+	return false
+}
+
+// ------------ installation ----------------
+func installTools() error {
+	switch runtime.GOOS {
+	case "linux":
+		return installToolsLinux()
+	case "darwin":
+		return installToolsMac()
+	case "windows":
+		return installToolsWindows()
+	default:
+		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+	}
+}
+
+func installToolsLinux() error {
+	installJadx := `wget https://github.com/skylot/jadx/releases/download/v1.4.6/jadx-1.4.6.zip && \
+unzip jadx-1.4.6.zip && \
+rm jadx-1.4.6.zip LICENSE NOTICE README.md && \
+chmod +x bin/jadx`
+	err := runCommand("bash", "-c", installJadx)
+	if err != nil {
+		return fmt.Errorf("error installing jadx: %v", err)
+	}
+	return nil
+}
+
+func installToolsMac() error {
+	installJadx := `curl -LO https://github.com/skylot/jadx/releases/download/v1.4.6/jadx-1.4.6.zip && \
+	unzip jadx-1.4.6.zip && \
+	rm jadx-1.4.6.zip LICENSE NOTICE README.md && \
+	chmod +x bin/jadx`
+	err := runCommand("bash", "-c", installJadx, "-q")
+	if err != nil {
+		return fmt.Errorf("error installing jadx: %v", err)
+	}
+	return nil
+}
+
+func installToolsWindows() error {
+	fmt.Println("Please install Apktool and jadx manually for Windows.")
+	fmt.Println("jadx: https://github.com/skylot/jadx#download")
+	return nil
+}
+
+// ------------ decompiling ----------------
+func decompileAPK(jadxSource string, apkPath string, folder string) error {
+	jadxErr := runCommand(jadxSource, "-d", folder, apkPath, "-q")
+	if jadxErr != nil {
+		return fmt.Errorf("error running jadx: %v", jadxErr)
+	}
+	return nil
+}
+
+func runCommand(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("error running command '%s': %v", name, err)
+	}
+	return nil
+}
+
+// ------------ checking hardcode ----------------
+func checkingFiles(folder string) error {
+	regex_map := RegexMap()
+
+	concurrency := 40
+	wg := sync.WaitGroup{}
+	fileChan := make(chan string, concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for path := range fileChan {
+				content, err := ioutil.ReadFile(path)
+				if err != nil {
+					fmt.Errorf("error reading file: %v", err)
+				}
+				for key, element := range regex_map {
+					r := regexp.MustCompile(element)
+					matches := r.FindAllString(string(content), -1)
+					for _, v := range matches {
+						fmt.Println("[+] Found " + "[" + key + "]" + "	[" + v + "]" + "	[" + path + "]")
+					}
+				}
+			}
+		}()
+	}
+
+	err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if skipExt(path) {
+			return nil
+		}
+		if !info.IsDir() {
+			fileChan <- path
+		}
+		return nil
+	})
+	close(fileChan)
+	wg.Wait()
+	return err
+}
+
+// ------------ env ----------------
+func colorBlue() string {
+	return string("\033[34m")
+}
+
+func colorReset() string {
+	return "\033[0m"
+}
+
+func skipExt(file string) bool {
+	extension := filepath.Ext(file)
+	return strings.EqualFold(extension, ".jpg") ||
+		strings.EqualFold(extension, ".jpeg") ||
+		strings.EqualFold(extension, ".png") ||
+		strings.EqualFold(extension, ".gif") ||
+		strings.EqualFold(extension, ".svg") ||
+		strings.EqualFold(extension, ".bmp") ||
+		strings.EqualFold(extension, ".webp") ||
+		strings.EqualFold(extension, ".bmp") ||
+		strings.EqualFold(extension, ".eot") ||
+		strings.EqualFold(extension, ".otf") ||
+		strings.EqualFold(extension, ".ttf") ||
+		strings.EqualFold(extension, ".woff") ||
+		strings.EqualFold(extension, ".woff2") ||
+		strings.EqualFold(extension, ".so")
+}
+
+func RegexMap() map[string]string {
+	return map[string]string{
 		"Email":                                      `([a-zA-Z0-9][_\.\w]*)+@([a-zA-Z0-9][\w\-]*\.[a-zA-Z]{2,})\b(?:(?:(?i)js|css|jpg|jpeg|png|ico)\b\\1)*`,
 		"Adafruit API Key":                           `(?i)(?:adafruit)(?:[0-9a-z\-_\t .]{0,20})(?:[\s|']|[\s|"]){0,3}(?:=|>|:=|\|\|:|<=|=>|:)(?:'|\"|\s|=|\x60){0,5}([a-z0-9_-]{32})(?:['|\"|\n|\r|\s|\x60|;]|$)`,
 		"Adobe Client ID (OAuth Web)":                `(?i)(?:adobe)(?:[0-9a-z\-_\t .]{0,20})(?:[\s|']|[\s|"]){0,3}(?:=|>|:=|\|\|:|<=|=>|:)(?:'|\"|\s|=|\x60){0,5}([a-f0-9]{32})(?:['|\"|\n|\r|\s|\x60|;]|$)`,
@@ -215,62 +421,70 @@ func regexGrep(content string, Burl string) {
 		"Yandex AWS Access Token":                    `(?i)(?:yandex)(?:[0-9a-z\-_\t .]{0,20})(?:[\s|']|[\s|"]){0,3}(?:=|>|:=|\|\|:|<=|=>|:)(?:'|\"|\s|=|\x60){0,5}(YC[a-zA-Z0-9_\-]{38})(?:['|\"|\n|\r|\s|\x60|;]|$)`,
 		"Zendesk Secret Key":                         `(?i)(?:zendesk)(?:[0-9a-z\-_\t .]{0,20})(?:[\s|']|[\s|"]){0,3}(?:=|>|:=|\|\|:|<=|=>|:)(?:'|\"|\s|=|\x60){0,5}([a-z0-9]{40})(?:['|\"|\n|\r|\s|\x60|;]|$)`,
 	}
-
-	for key, element := range regex_map {
-		r := regexp.MustCompile(element)
-		matches := r.FindAllString(content, -1)
-		for _, v := range matches {
-			fmt.Println("[+] Found " + "[" + key + "]" + "	[" + v + "]" + "	[" + Burl + "]")
-		}
-	}
-
 }
 
-func linkFinder(content, baseURL string, completeURL, statusCode bool) {
-	linkRegex := `(?:"|')(((?:[a-zA-Z]{1,10}://|//)[^"'/]{1,}\.[a-zA-Z]{2,}[^"']{0,})|((?:/|\.\./|\./)[^"'><,;| *()(%%$^/\\\[\]][^"'><,;|()]{1,})|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{1,}\.(?:[a-zA-Z]{1,4}|action)(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{3,}(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-]{1,}\.(?:php|asp|aspx|jsp|json|action|html|js|txt|xml)(?:[\?|#][^"|']{0,}|)))(?:"|')`
+// ------------ delete -----------
+func deleteDecompiledFolder(folder string) {
+	defer os.RemoveAll(folder)
+}
 
-	r := regexp.MustCompile(linkRegex)
-	matches := r.FindAllString(content, -1)
-
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		fmt.Println("")
-	}
-
-	for _, v := range matches {
-		cleanedMatch := strings.Trim(v, `"'`)
-		link, err := url.Parse(cleanedMatch)
-		if err != nil {
-			continue
-		}
-		if completeURL {
-			link = base.ResolveReference(link)
-		}
-		if statusCode {
-			request(link.String(), true)
+func findHardCodeFromAPK(checkApk string) {
+	areToolsInstalled, jadxSource := checkToolsInstallation()
+	if !areToolsInstalled {
+		fmt.Println("    Jadx is not installed.")
+		var i string
+		fmt.Print("     Do you want to download Jadx tool (y=yes, n=no): ")
+		fmt.Scan(&i)
+		if strings.ToLower(i) == "y" {
+			err := installTools()
+			if err != nil {
+				log.Fatalf("Error installing tools: %v", err)
+			}
+			jadxSource = "bin/jadx"
 		} else {
-			fmt.Printf("[+] Found link: [%s] in [%s] \n", link.String(), base.String())
+			fmt.Print("Please install Jadx")
+			return
+		}
+	}
+	a := strings.Split(checkApk, ",")
+	for _, fileApk := range a {
+		fileExtension := filepath.Ext(fileApk)
+
+		if fileExtension == ".apk" {
+			folder := filepath.Base(strings.TrimSuffix(fileApk, filepath.Ext(fileApk)))
+			err := decompileAPK(jadxSource, fileApk, folder)
+			if err != nil {
+				log.Fatalf("Error decompiling APK file: %v", err)
+			}
+			err = checkingFiles(folder)
+			if err != nil {
+				log.Fatal(err)
+			}
+			deleteDecompiledFolder(folder)
+		}
+	}
+}
+
+func findHardCodeFromFolder(checkFolder string) {
+	a := strings.Split(checkFolder, ",")
+	for _, folder := range a {
+		err := checkingFiles(folder)
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
 }
 
 func main() {
 	var concurrency int
-	var enableLinkFinder, completeURL, checkStatus, enableSecretFinder bool
+	var enableLinkFinder, completeURL, checkStatus, enableSecretFinder, checkApk, checkFolder bool
 	flag.BoolVar(&enableLinkFinder, "l", false, "Enable linkFinder")
 	flag.BoolVar(&completeURL, "e", false, "Complete Scope Url or not")
 	flag.BoolVar(&checkStatus, "k", false, "Check status or not")
 	flag.BoolVar(&enableSecretFinder, "s", false, "Enable secretFinder")
 	flag.IntVar(&concurrency, "c", 10, "Number of concurrent workers")
-
-	// TODO: Added this lines
-	var checkApk bool
-	var checkFolder bool
-
 	flag.BoolVar(&checkApk, "fa", false, "Decompile APK(s) and find Hardcode")
 	flag.BoolVar(&checkFolder, "fh", false, "Find Hardcode from Folder(s)")
-	// TODO: ------------------
-
 	flag.Parse()
 	urls := make(chan string, 10)
 	go func() {
@@ -306,81 +520,15 @@ func main() {
 				if checkStatus {
 					linkFinder(res, vUrl, true, true)
 				}
-
-				// TODO: Add this
 				if checkApk {
 					findHardCodeFromAPK(vUrl)
 				}
 				if checkFolder {
 					findHardCodeFromFolder(vUrl)
 				}
-				// TODO: ----------
-
 			}
 			wg.Done()
 		}()
 	}
 	wg.Wait()
-}
-
-func findHardCodeFromAPK(checkApk string) {
-	// Check installation tool
-	// fmt.Println(colorBlue(), "> Checking installation tool ...")
-	areToolsInstalled, jadxSource := checkToolsInstallation()
-	if !areToolsInstalled {
-		fmt.Println(colorReset(), "    Jadx is not installed.")
-		var i string
-		fmt.Print("     Do you want to download Jadx tool (y=yes, n=no): ")
-		fmt.Scan(&i)
-		if strings.ToLower(i) == "y" {
-			// fmt.Println(colorBlue(), "> Downloading Jadx tool ...")
-			err := installTools()
-			if err != nil {
-				log.Fatalf("Error installing tools: %v", err)
-			}
-			jadxSource = "bin/jadx"
-		} else {
-			fmt.Print("Please install Jadx")
-			return
-		}
-	}
-	// fmt.Println(colorReset(), "    exist from "+jadxSource)
-	a := strings.Split(checkApk, ",")
-	for _, fileApk := range a {
-		fileExtension := filepath.Ext(fileApk)
-
-		if fileExtension == ".apk" {
-			folder := filepath.Base(strings.TrimSuffix(fileApk, filepath.Ext(fileApk)))
-
-			// Decompile
-			// fmt.Println(colorBlue(), "> Decompiling", fileApk, "  ...")
-			err := decompileAPK(jadxSource, fileApk, folder)
-			if err != nil {
-				log.Fatalf("Error decompiling APK file: %v", err)
-			}
-
-			// File Hardcode
-			// fmt.Println(colorBlue(), "> Find hardcode from", folder, " ...")
-			err = checkingFiles(folder)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			// Delete docompiled folder
-			// fmt.Println(colorBlue(), "> Deleting docompiled folder ...")
-			RemoveTempDir(folder)
-		}
-	}
-}
-
-func findHardCodeFromFolder(checkFolder string) {
-	a := strings.Split(checkFolder, ",")
-	for _, folder := range a {
-		// File Hardcode
-		// fmt.Println(colorBlue(), "> Find hardcode from", folder, "...")
-		err := checkingFiles(folder)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 }
