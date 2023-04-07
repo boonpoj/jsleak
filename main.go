@@ -483,7 +483,7 @@ func main() {
 	flag.BoolVar(&checkStatus, "k", false, "Check status or not")
 	flag.BoolVar(&enableSecretFinder, "s", false, "Enable secretFinder")
 	flag.IntVar(&concurrency, "c", 10, "Number of concurrent workers")
-	flag.BoolVar(&checkApk, "fa", false, "Decompile APK(s) and find Hardcode")
+	flag.BoolVar(&checkApk, "fa", false, "Find Hardcode from APK(s)")
 	flag.BoolVar(&checkFolder, "fh", false, "Find Hardcode from Folder(s)")
 	flag.Parse()
 	urls := make(chan string, 10)
