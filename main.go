@@ -412,7 +412,7 @@ func findHardCodeFromAPK(filePaths string) {
 		}
 
 		if extension(filePath) != ".apk" {
-			fmt.Println(colorRed(), "`"+filePath+"`", "is not <.apk> file \nPlease enter the <.apk> file")
+			fmt.Println(colorRed(), filePath, "is not <.apk> file \nPlease enter the <.apk> file")
 			return
 		}
 
