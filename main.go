@@ -108,16 +108,12 @@ func linkFinder(content, baseURL string, completeURL, statusCode bool) {
 
 // ------------ checing installation tool ------------
 func checkToolsInstallation() (bool, string) {
-	jadxInstalled1 := checkCommandAvailability("jadx")
-	jadxInstalled2 := checkCommandAvailability("bin/jadx")
+	jadxInstalled := checkCommandAvailability("jadx")
 	jadxSource := ""
-	if jadxInstalled1 {
+	if jadxInstalled {
 		jadxSource = "jadx"
 	}
-	if jadxInstalled2 {
-		jadxSource = "bin/jadx"
-	}
-	return jadxInstalled1 || jadxInstalled2, jadxSource
+	return jadxInstalled, jadxSource
 }
 
 func checkCommandAvailability(command string) bool {
@@ -431,21 +427,10 @@ func deleteDecompiledFolder(folder string) {
 func findHardCodeFromAPK(checkApk string) {
 	areToolsInstalled, jadxSource := checkToolsInstallation()
 	if !areToolsInstalled {
-		fmt.Println("    Jadx is not installed.")
-		var i string
-		fmt.Print("     Do you want to download Jadx tool (y=yes, n=no): ")
-		fmt.Scan(&i)
-		if strings.ToLower(i) == "y" {
-			err := installTools()
-			if err != nil {
-				log.Fatalf("Error installing tools: %v", err)
-			}
-			jadxSource = "bin/jadx"
-		} else {
-			fmt.Print("Please install Jadx")
-			return
-		}
+		fmt.Println("Please install Jadx")
+		return
 	}
+
 	a := strings.Split(checkApk, ",")
 	for _, fileApk := range a {
 		fileExtension := filepath.Ext(fileApk)
