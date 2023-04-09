@@ -181,7 +181,7 @@ func checkHardcode(targetPath string) error {
 					r := regexp.MustCompile(element)
 					matches := r.FindAllString(string(content), -1)
 					for _, v := range matches {
-						fmt.Println("[+] Found " + "[" + key + "]" + "	[" + v + "]" + "	[" + path + "]")
+						fmt.Println(colorGreen(), "[+] Found "+"["+key+"]"+"	["+v+"]"+"	["+path+"]")
 					}
 				}
 			}
@@ -208,6 +208,18 @@ func checkHardcode(targetPath string) error {
 // ------------ env ----------------
 func colorBlue() string {
 	return string("\033[34m")
+}
+
+func colorRed() string {
+	return "\033[31m"
+}
+
+func colorGreen() string {
+	return "\033[32m"
+}
+
+func colorPurple() string {
+	return "\033[35m"
 }
 
 func colorReset() string {
