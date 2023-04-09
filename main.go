@@ -133,7 +133,7 @@ func isFileExist(filePath string) (bool, string) {
 func currentAbsPath() string {
 	absCurrentPath, err := os.Getwd()
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println(colorRed(), "Error:", err)
 		return ""
 	}
 	return absCurrentPath
@@ -141,21 +141,21 @@ func currentAbsPath() string {
 
 // ------------ decompiling ----------------
 func decompileAPK(absTargetPath string, folderOut string) error {
+	// command := "jadx -d " + folderOut + " " + absTargetPath + " 2>/dev/null -q"
+	// jadxErr := runCommand("jadx", "-d", folderOut, absTargetPath, "-q")
 	jadxErr := runCommand("jadx", "-d", folderOut, absTargetPath, "-q")
 	if jadxErr != nil {
-		return fmt.Errorf("error running jadx: %v", jadxErr)
+		return fmt.Errorf(colorRed(), "error running jadx: %v", jadxErr)
 	}
 	return nil
 }
 
 func runCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
+	cmd.Stderr = ioutil.Discard
+	_, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("Error running command '%s': %v", name, err)
+		fmt.Println(colorRed(), "Error running command:", err)
 	}
 	return nil
 }
@@ -407,31 +407,31 @@ func findHardCodeFromAPK(filePaths string) {
 	filePathArray := strings.Split(filePaths, ",")
 	for _, filePath := range filePathArray {
 		if !isToolsInstalled() {
-			fmt.Println("Please install Jadx")
+			fmt.Println(colorRed(), "Please install Jadx")
 			return
 		}
 
 		if extension(filePath) != ".apk" {
-			fmt.Println("`"+filePath+"`", "is not <.apk> file \nPlease enter the <.apk> file")
+			fmt.Println(colorRed(), "`"+filePath+"`", "is not <.apk> file \nPlease enter the <.apk> file")
 			return
 		}
 
 		isExist, absTargetPath := isFileExist(filePath)
 		if !isExist {
-			fmt.Println(filePath + " does not exist")
+			fmt.Println(colorRed(), filePath+" does not exist")
 			return
 		}
 
 		folder := filepath.Base(strings.TrimSuffix(filePath, filepath.Ext(filePath)))
 		err := decompileAPK(absTargetPath, currentAbsPath()+"/"+folder)
 		if err != nil {
-			log.Fatalf("Error decompiling APK file: %v", err)
+			log.Fatalf(colorRed(), "Error decompiling APK file: %v", err)
 			return
 		}
 
 		err = checkHardcode("./" + folder)
 		if err != nil {
-			log.Fatalf("Error check Hardcode: %v", err)
+			log.Fatalf(colorRed(), "Error check Hardcode: %v", err)
 			return
 		}
 
@@ -444,13 +444,13 @@ func findHardCodeFromFolder(folderPaths string) {
 	for _, folderPath := range folderPathArray {
 		isExist, _ := isFileExist(folderPath)
 		if !isExist {
-			fmt.Println(folderPath + " does not exist")
+			fmt.Println(colorRed(), folderPath+" does not exist")
 			return
 		}
 
 		err := checkHardcode(folderPath)
 		if err != nil {
-			log.Fatalf("Error check Hardcode: %v", err)
+			log.Fatalf(colorRed(), "Error check Hardcode: %v", err)
 		}
 	}
 }
