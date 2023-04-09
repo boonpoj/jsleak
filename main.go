@@ -15,7 +15,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -106,14 +105,10 @@ func linkFinder(content, baseURL string, completeURL, statusCode bool) {
 	}
 }
 
-// ------------ checing installation tool ------------
-func checkToolsInstallation() (bool, string) {
+// ------------ checking installation tool ------------
+func isToolsInstalled() bool {
 	jadxInstalled := checkCommandAvailability("jadx")
-	jadxSource := ""
-	if jadxInstalled {
-		jadxSource = "jadx"
-	}
-	return jadxInstalled, jadxSource
+	return jadxInstalled
 }
 
 func checkCommandAvailability(command string) bool {
@@ -121,60 +116,32 @@ func checkCommandAvailability(command string) bool {
 	return err == nil
 }
 
-func checkLocalFile(path string) bool {
-	if _, err := os.Stat("bin/jadx"); err == nil {
-		return true
-	}
-	return false
+// ------------ checking file Extension ------------
+func extension(filePath string) string {
+	return filepath.Ext(filePath)
 }
 
-// ------------ installation ----------------
-func installTools() error {
-	switch runtime.GOOS {
-	case "linux":
-		return installToolsLinux()
-	case "darwin":
-		return installToolsMac()
-	case "windows":
-		return installToolsWindows()
-	default:
-		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+// ------------ checking file exist ------------
+func isFileExist(filePath string) (bool, string) {
+	absTargetPath, _ := filepath.Abs(filePath)
+	if _, err := os.Stat(absTargetPath); os.IsNotExist(err) {
+		return false, ""
 	}
+	return true, absTargetPath
 }
 
-func installToolsLinux() error {
-	installJadx := `wget https://github.com/skylot/jadx/releases/download/v1.4.6/jadx-1.4.6.zip && \
-unzip jadx-1.4.6.zip && \
-rm jadx-1.4.6.zip LICENSE NOTICE README.md && \
-chmod +x bin/jadx`
-	err := runCommand("bash", "-c", installJadx)
+func currentAbsPath() string {
+	absCurrentPath, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("error installing jadx: %v", err)
+		fmt.Println("Error:", err)
+		return ""
 	}
-	return nil
-}
-
-func installToolsMac() error {
-	installJadx := `curl -LO https://github.com/skylot/jadx/releases/download/v1.4.6/jadx-1.4.6.zip && \
-	unzip jadx-1.4.6.zip && \
-	rm jadx-1.4.6.zip LICENSE NOTICE README.md && \
-	chmod +x bin/jadx`
-	err := runCommand("bash", "-c", installJadx, "-q")
-	if err != nil {
-		return fmt.Errorf("error installing jadx: %v", err)
-	}
-	return nil
-}
-
-func installToolsWindows() error {
-	fmt.Println("Please install Apktool and jadx manually for Windows.")
-	fmt.Println("jadx: https://github.com/skylot/jadx#download")
-	return nil
+	return absCurrentPath
 }
 
 // ------------ decompiling ----------------
-func decompileAPK(jadxSource string, apkPath string, folder string) error {
-	jadxErr := runCommand(jadxSource, "-d", folder, apkPath, "-q")
+func decompileAPK(absTargetPath string, folderOut string) error {
+	jadxErr := runCommand("jadx", "-d", folderOut, absTargetPath, "-q")
 	if jadxErr != nil {
 		return fmt.Errorf("error running jadx: %v", jadxErr)
 	}
@@ -188,13 +155,13 @@ func runCommand(name string, args ...string) error {
 
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("error running command '%s': %v", name, err)
+		return fmt.Errorf("Error running command '%s': %v", name, err)
 	}
 	return nil
 }
 
 // ------------ checking hardcode ----------------
-func checkingFiles(folder string) error {
+func checkHardcode(targetPath string) error {
 	regex_map := RegexMap()
 
 	concurrency := 40
@@ -208,7 +175,7 @@ func checkingFiles(folder string) error {
 			for path := range fileChan {
 				content, err := ioutil.ReadFile(path)
 				if err != nil {
-					fmt.Errorf("error reading file: %v", err)
+					fmt.Errorf("Error reading file: %v", err)
 				}
 				for key, element := range regex_map {
 					r := regexp.MustCompile(element)
@@ -221,7 +188,7 @@ func checkingFiles(folder string) error {
 		}()
 	}
 
-	err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(targetPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -424,38 +391,54 @@ func deleteDecompiledFolder(folder string) {
 	defer os.RemoveAll(folder)
 }
 
-func findHardCodeFromAPK(checkApk string) {
-	areToolsInstalled, jadxSource := checkToolsInstallation()
-	if !areToolsInstalled {
-		fmt.Println("Please install Jadx")
-		return
-	}
-
-	a := strings.Split(checkApk, ",")
-	for _, fileApk := range a {
-		fileExtension := filepath.Ext(fileApk)
-
-		if fileExtension == ".apk" {
-			folder := filepath.Base(strings.TrimSuffix(fileApk, filepath.Ext(fileApk)))
-			err := decompileAPK(jadxSource, fileApk, folder)
-			if err != nil {
-				log.Fatalf("Error decompiling APK file: %v", err)
-			}
-			err = checkingFiles(folder)
-			if err != nil {
-				log.Fatal(err)
-			}
-			deleteDecompiledFolder(folder)
+func findHardCodeFromAPK(filePaths string) {
+	filePathArray := strings.Split(filePaths, ",")
+	for _, filePath := range filePathArray {
+		if !isToolsInstalled() {
+			fmt.Println("Please install Jadx")
+			return
 		}
+
+		if extension(filePath) != ".apk" {
+			fmt.Println("`"+filePath+"`", "is not <.apk> file \nPlease enter the <.apk> file")
+			return
+		}
+
+		isExist, absTargetPath := isFileExist(filePath)
+		if !isExist {
+			fmt.Println(filePath + " does not exist")
+			return
+		}
+
+		folder := filepath.Base(strings.TrimSuffix(filePath, filepath.Ext(filePath)))
+		err := decompileAPK(absTargetPath, currentAbsPath()+"/"+folder)
+		if err != nil {
+			log.Fatalf("Error decompiling APK file: %v", err)
+			return
+		}
+
+		err = checkHardcode("./" + folder)
+		if err != nil {
+			log.Fatalf("Error check Hardcode: %v", err)
+			return
+		}
+
+		deleteDecompiledFolder("./" + folder)
 	}
 }
 
-func findHardCodeFromFolder(checkFolder string) {
-	a := strings.Split(checkFolder, ",")
-	for _, folder := range a {
-		err := checkingFiles(folder)
+func findHardCodeFromFolder(folderPaths string) {
+	folderPathArray := strings.Split(folderPaths, ",")
+	for _, folderPath := range folderPathArray {
+		isExist, _ := isFileExist(folderPath)
+		if !isExist {
+			fmt.Println(folderPath + " does not exist")
+			return
+		}
+
+		err := checkHardcode(folderPath)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Error check Hardcode: %v", err)
 		}
 	}
 }
@@ -492,7 +475,6 @@ func main() {
 				if !checkApk && !checkFolder {
 					res = request(vUrl, false)
 				}
-
 				if enableSecretFinder {
 					regexGrep(res, vUrl)
 				}
