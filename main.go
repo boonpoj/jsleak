@@ -435,7 +435,7 @@ func findHardCodeFromAPK(filePaths string) {
 			return
 		}
 
-		// deleteDecompiledFolder("./" + folder)
+		deleteDecompiledFolder("./" + folder)
 	}
 }
 
