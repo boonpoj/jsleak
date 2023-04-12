@@ -429,26 +429,26 @@ func findHardCodeFromAPK(filePaths string) {
 			return
 		}
 
-		err = checkHardcode("./" + folder)
+		err = checkHardcode(currentAbsPath() + "/" + folder)
 		if err != nil {
 			log.Fatalf(colorRed(), "Error check Hardcode: %v", err)
 			return
 		}
 
-		deleteDecompiledFolder("./" + folder)
+		// deleteDecompiledFolder("./" + folder)
 	}
 }
 
 func findHardCodeFromFolder(folderPaths string) {
 	folderPathArray := strings.Split(folderPaths, ",")
 	for _, folderPath := range folderPathArray {
-		isExist, _ := isFileExist(folderPath)
+		isExist, absTargetPath := isFileExist(folderPath)
 		if !isExist {
 			fmt.Println(colorRed(), folderPath+" does not exist")
 			return
 		}
 
-		err := checkHardcode(folderPath)
+		err := checkHardcode(absTargetPath)
 		if err != nil {
 			log.Fatalf(colorRed(), "Error check Hardcode: %v", err)
 		}

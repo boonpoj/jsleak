@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="1" android:versionName="1.0" package="com.WaTF.WaTFBank">
+    <uses-sdk android:minSdkVersion="15" android:targetSdkVersion="27"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+    <application android:theme="@style/AppTheme" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:debuggable="true" android:allowBackup="true" android:supportsRtl="true" android:roundIcon="@mipmap/ic_launcher_round">
+        <activity android:name="com.WaTF.WaTFBank.Login">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity android:name="com.WaTF.WaTFBank.SetPin"/>
+        <activity android:name="com.WaTF.WaTFBank.CheckPin"/>
+        <activity android:name="com.WaTF.WaTFBank.AccountSummary"/>
+        <activity android:name="com.WaTF.WaTFBank.Home"/>
+        <activity android:name="com.WaTF.WaTFBank.Transfer"/>
+        <activity android:name="com.WaTF.WaTFBank.TransferFavorite"/>
+        <activity android:name="com.WaTF.WaTFBank.TransactionHistory"/>
+        <activity android:name="com.WaTF.WaTFBank.AddFavoriteAccount"/>
+        <activity android:name="com.WaTF.WaTFBank.TransferResult"/>
+        <receiver android:name="com.WaTF.WaTFBank.Receiver">
+            <intent-filter>
+                <action android:name="com.WaTF.WaTFBank.SEND_SMS"/>
+            </intent-filter>
+        </receiver>
+        <provider android:name="com.WaTF.WaTFBank.FavoriteAccountProvider" android:exported="true" android:authorities="com.WaTF.WaTFBank.FavoriteAccountProvider"/>
+        <activity android:name="com.WaTF.WaTFBank.Root"/>
+        <activity android:theme="@android:style/Theme.Translucent" android:name="com.google.android.gms.ads.AdActivity" android:exported="false" android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard"/>
+        <meta-data android:name="com.google.android.gms.version" android:value="@integer/google_play_services_version"/>
+        <meta-data android:name="android.arch.lifecycle.VERSION" android:value="27.0.0-SNAPSHOT"/>
+    </application>
+</manifest>

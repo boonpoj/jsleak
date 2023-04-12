@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:padding="16dp" android:layout_width="match_parent" android:layout_height="match_parent">
+    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent">
+        <LinearLayout android:layout_gravity="center" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <ImageView android:layout_gravity="center_horizontal" android:background="@mipmap/logo" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <android.support.v4.widget.Space android:layout_width="match_parent" android:layout_height="@dimen/spaceMedium"/>
+            <TextView android:textSize="26sp" android:layout_gravity="center" android:id="@+id/tvSetFP" android:visibility="gone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Please set Fingerprint"/>
+            <Button android:textColor="@android:color/holo_blue_dark" android:layout_gravity="center" android:id="@+id/btnSetting" android:visibility="gone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Open Settings" style="@android:style/Widget.Holo.Button.Borderless"/>
+            <EditText android:textSize="20sp" android:id="@+id/etPin" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Pin" android:maxLength="4" android:drawableLeft="@drawable/pwd_24dp" android:drawablePadding="10dp" android:inputType="numberDecimal"/>
+            <android.support.v4.widget.Space android:layout_width="match_parent" android:layout_height="@dimen/spaceNarrow"/>
+            <Button android:textColor="#ffffff" android:id="@+id/btnSetPin" android:background="@color/colorPrimary" android:layout_width="match_parent" android:layout_height="@dimen/button" android:text="Set Pin"/>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

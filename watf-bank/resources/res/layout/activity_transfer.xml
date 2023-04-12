@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:padding="16dp" android:layout_width="match_parent" android:layout_height="match_parent">
+    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent">
+        <LinearLayout android:layout_gravity="center" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <EditText android:textSize="20sp" android:id="@+id/etAccount" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="" android:hint="Receiver Account Number" android:maxLength="10" android:drawableLeft="@drawable/ic_account_balance_wallet_black_24dp" android:drawablePadding="10dp" android:inputType="numberDecimal"/>
+            <EditText android:textSize="20sp" android:id="@+id/etAmount" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="" android:hint="Amount" android:drawableLeft="@drawable/ic_attach_money_black_24dp" android:drawablePadding="10dp" android:inputType="number"/>
+            <android.support.v4.widget.Space android:layout_width="match_parent" android:layout_height="@dimen/spaceNarrow"/>
+            <Button android:textColor="#ffffff" android:id="@+id/btnTransfer" android:background="@color/colorPrimary" android:layout_width="match_parent" android:layout_height="@dimen/button" android:text="Transfer"/>
+        </LinearLayout>
+    </ScrollView>
+</RelativeLayout>
