@@ -246,7 +246,7 @@ func colorRed() string {
 }
 
 func colorGreen() string {
-	return "\033[32m"
+	return "\033[92m"
 }
 
 func colorYellow() string {
