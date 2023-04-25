@@ -38,7 +38,7 @@ var httpClient = &http.Client{
 func request(fullurl string, statusCode bool) string {
 	req, err := http.NewRequest("GET", fullurl, nil)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(colorRed(), err)
 		return ""
 	}
 
@@ -46,19 +46,21 @@ func request(fullurl string, statusCode bool) string {
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(colorRed(), err)
 		return ""
 	}
 	defer resp.Body.Close()
 	if statusCode && resp.StatusCode != 404 {
-		fmt.Printf("[Linkfinder] %s : %d\n", fullurl, resp.StatusCode)
+		fmt.Print(colorReset(), "[Linkfinder] ")
+		fmt.Print(colorGreen(), fullurl)
+		fmt.Print(colorReset(), " :", resp.StatusCode, "\n")
 	}
 
 	var bodyString string
 	if resp.StatusCode == http.StatusOK {
 		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(colorRed(), err)
 			return ""
 		}
 		bodyString = string(bodyBytes)
@@ -73,7 +75,18 @@ func regexGrep(content string, Burl string) {
 		r := regexp.MustCompile(element)
 		matches := r.FindAllString(content, -1)
 		for _, v := range matches {
-			fmt.Println("[+] Found " + "[" + key + "]" + "	[" + v + "]" + "	[" + Burl + "]")
+			fmt.Print(colorReset(), "[+] Found ")
+			fmt.Print(colorReset(), "[")
+			fmt.Print(colorCyan(), key)
+			fmt.Print(colorReset(), "]")
+
+			fmt.Print(colorReset(), "	[")
+			fmt.Print(colorGreen(), v)
+			fmt.Print(colorReset(), "]")
+
+			fmt.Print(colorReset(), "	[")
+			fmt.Print(colorGreen(), Burl)
+			fmt.Print(colorReset(), "]\n")
 		}
 	}
 }
@@ -101,7 +114,15 @@ func linkFinder(content, baseURL string, completeURL, statusCode bool) {
 		if statusCode {
 			request(link.String(), true)
 		} else {
-			fmt.Printf("[+] Found link: [%s] in [%s] \n", link.String(), base.String())
+			fmt.Print(colorReset(), "[+] Found ")
+			fmt.Print(colorCyan(), "link: ")
+			fmt.Print(colorReset(), "[")
+			fmt.Print(colorGreen(), link.String())
+			fmt.Print(colorReset(), "]")
+			fmt.Print(colorReset(), " in ")
+			fmt.Print(colorReset(), "[")
+			fmt.Print(colorGreen(), base.String())
+			fmt.Print(colorReset(), "]\n")
 		}
 	}
 }
@@ -176,13 +197,22 @@ func checkHardcode(targetPath string) error {
 			for path := range fileChan {
 				content, err := ioutil.ReadFile(path)
 				if err != nil {
-					fmt.Errorf("Error reading file: %v", err)
+					fmt.Errorf(colorRed(), "Error reading file: %v", err)
 				}
 				for key, element := range regex_map {
 					r := regexp.MustCompile(element)
 					matches := r.FindAllString(string(content), -1)
 					for _, v := range matches {
-						fmt.Println(colorGreen(), "[+] Found "+"["+key+"]"+"	["+v+"]"+"	["+path+"]")
+						fmt.Print(colorReset(), "[+] Found ")
+						fmt.Print(colorReset(), "[")
+						fmt.Print(colorCyan(), key)
+						fmt.Print(colorReset(), "]")
+						fmt.Print(colorReset(), "	[")
+						fmt.Print(colorGreen(), v)
+						fmt.Print(colorReset(), "]")
+						fmt.Print(colorReset(), "	[")
+						fmt.Print(colorGreen(), path)
+						fmt.Print(colorReset(), "]\n")
 					}
 				}
 			}
@@ -207,8 +237,8 @@ func checkHardcode(targetPath string) error {
 }
 
 // ------------ env ----------------
-func colorBlue() string {
-	return string("\033[34m")
+func colorReset() string {
+	return "\033[0m"
 }
 
 func colorRed() string {
@@ -219,12 +249,24 @@ func colorGreen() string {
 	return "\033[32m"
 }
 
+func colorYellow() string {
+	return "\033[33m"
+}
+
+func colorBlue() string {
+	return string("\033[34m")
+}
+
 func colorPurple() string {
 	return "\033[35m"
 }
 
-func colorReset() string {
-	return "\033[0m"
+func colorCyan() string {
+	return "\033[36m"
+}
+
+func colorWhite() string {
+	return "\033[37m"
 }
 
 func skipExt(file string) bool {
@@ -323,6 +365,15 @@ func findHardCodeFromFolder(folderPaths string) {
 }
 
 func main() {
+	logo := `
+       _      __           __  
+      (_)____/ /__  ____ _/ /__
+     / / ___/ / _ \/ __ ` + "`" + `/ //_/
+    / (__  ) /  __/ /_/ / ,<   
+ __/ /____/_/\___/\__,_/_/|_|  
+/___/                    v.xx     
+ `
+	println(colorPurple(), logo)
 	var concurrency int
 	var enableLinkFinder, completeURL, checkStatus, enableSecretFinder, checkApk, checkFolder bool
 	flag.BoolVar(&enableLinkFinder, "l", false, "Enable linkFinder")
